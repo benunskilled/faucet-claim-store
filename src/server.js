@@ -61,7 +61,7 @@ async function claimIfDue() {
     addLog(state, false, e.message.split("\n")[0]);
   } finally {
     state.lastAttempt = now;
-    writeJson(STATE, state);
+    try { writeJson(STATE, state); } catch (e) { console.log(`Status nicht gespeichert: ${e.message}`); }
     if (context) await context.close().catch(() => {});
     running = false;
   }
@@ -112,7 +112,12 @@ const server = http.createServer((req, res) => {
       if (!LIGHTNING_ADDRESS.test(address)) {
         return send(400, "application/json", JSON.stringify({ error: "Das sieht nicht wie eine Lightning-Adresse aus (name@wallet.com)." }));
       }
-      writeJson(CONFIG, { address, name });
+      try {
+        writeJson(CONFIG, { address, name });
+      } catch (e) {
+        console.log(`Speichern fehlgeschlagen: ${e.message}`);
+        return send(500, "application/json", JSON.stringify({ error: `Kann nicht speichern: Der Datenordner ist nicht beschreibbar (${e.code || e.message}).` }));
+      }
       send(200, "application/json", JSON.stringify(status()));
       claimIfDue(); // neue Adresse: gleich prüfen, ob ein Claim fällig ist
     });
