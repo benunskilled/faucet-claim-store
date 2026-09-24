@@ -1,0 +1,12 @@
+<!-- Nachbau der Faucet-Seite für Tests: gleiche Feld-IDs, antwortet nach kurzer Pause -->
+<meta charset="utf-8">
+<input id="claimName"><textarea id="invoice"></textarea>
+<button id="claimBtn">claim</button><div id="claimMessage" class="message"></div>
+<img src="https://example.invalid/big.png">
+<script>
+  claimBtn.onclick = () => setTimeout(() => {
+    const ok = invoice.value === "test@example.com";
+    claimMessage.className = "message " + (ok ? "success" : "error");
+    claimMessage.textContent = ok ? "⚡ 21 sats envoyés !" : "Adresse refusée";
+  }, 300);
+</script>
