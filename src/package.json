@@ -1,6 +1,6 @@
 {
   "name": "faucet-claim",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "main": "server.js",
   "dependencies": { "playwright": "1.63.0" }

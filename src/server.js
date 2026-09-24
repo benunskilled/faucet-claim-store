@@ -3,9 +3,8 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { execFile } = require("child_process");
 
-const FAUCET_URL = "https://faucet.vixlnbits.fr";
 const PORT = Number(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || path.join(__dirname, "data");
 const CONFIG = path.join(DATA, "config.json");
@@ -39,32 +38,31 @@ async function claimIfDue() {
   if (now < (state.lastSuccess || 0) + INTERVAL_MS) return; // noch nicht fällig
   if (now < (state.lastAttempt || 0) + RETRY_MS) return; // Fehler-Pause
   running = true;
-  let context;
-  try {
-    // Eigenes, dauerhaftes Browser-Profil, damit der Faucet jeden Tag denselben "Browser" sieht
-    context = await chromium.launchPersistentContext(
-      path.join(DATA, "browser-profile"),
-      { headless: true }
+  const { ok, text } = await runClaim(address, name);
+  addLog(state, ok, text);
+  if (ok) state.lastSuccess = now;
+  state.lastAttempt = now;
+  try { writeJson(STATE, state); } catch (e) { console.log(`Status nicht gespeichert: ${e.message}`); }
+  running = false;
+}
+
+// Der Browser läuft in einem eigenen Prozess (claim.js), der sich danach beendet.
+// So braucht der Server im Leerlauf nur ein paar MB statt einer geladenen Browser-Steuerung.
+function runClaim(address, name) {
+  return new Promise(resolve => {
+    execFile(
+      process.execPath,
+      [path.join(__dirname, "claim.js")],
+      { env: { ...process.env, CLAIM_ADDRESS: address, CLAIM_NAME: name || "" }, timeout: 3 * 60 * 1000 },
+      (err, stdout) => {
+        try {
+          resolve(JSON.parse(stdout.trim().split("\n").pop()));
+        } catch {
+          resolve({ ok: false, text: err ? `Claim-Prozess fehlgeschlagen: ${err.killed ? "Zeitüberschreitung" : err.message.split("\n")[0]}` : "Keine Antwort vom Claim-Prozess" });
+        }
+      }
     );
-    const page = await context.newPage();
-    await page.goto(FAUCET_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
-    if (name) await page.fill("#claimName", name);
-    await page.fill("#invoice", address);
-    await page.click("#claimBtn");
-    // Warten, bis die Seite eine Erfolgs- oder Fehlermeldung zeigt
-    const msg = page.locator("#claimMessage.success, #claimMessage.error");
-    await msg.waitFor({ timeout: 60000 });
-    const ok = (await msg.getAttribute("class")).includes("success");
-    addLog(state, ok, (await msg.textContent()).trim());
-    if (ok) state.lastSuccess = now;
-  } catch (e) {
-    addLog(state, false, e.message.split("\n")[0]);
-  } finally {
-    state.lastAttempt = now;
-    try { writeJson(STATE, state); } catch (e) { console.log(`Status nicht gespeichert: ${e.message}`); }
-    if (context) await context.close().catch(() => {});
-    running = false;
-  }
+  });
 }
 
 function status() {
