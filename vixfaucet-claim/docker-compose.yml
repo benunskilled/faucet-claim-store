@@ -3,7 +3,7 @@
 # built from src/ in this repository).
 #
 # The image reference is pinned by tag AND digest of the multi-arch index.
-# Until the first release it holds a placeholder - see README.md.
+# See README.md for releasing a new version.
 
 services:
   app_proxy:
@@ -12,7 +12,7 @@ services:
       APP_PORT: 3000
 
   web:
-    image: ghcr.io/benunskilled/faucet-claim:IMAGE_PLACEHOLDER
+    image: ghcr.io/benunskilled/faucet-claim:1.0.0@sha256:ec52c93835cbdfbc39218f9067637be4465f8d4092703d3a87f8096771635ad1
     user: "1000:1000"
     restart: unless-stopped
     init: true

@@ -33,6 +33,3 @@ deinen Node.
    letzter Schritt druckt `ghcr.io/benunskilled/faucet-claim:X.Y.Z@sha256:…`.
 4. Diese Zeile in `vixfaucet-claim/docker-compose.yml` bei `image:` eintragen,
    `version:` in `vixfaucet-claim/umbrel-app.yml` anpassen, committen, pushen.
-
-Beim allerersten Mal: Das Paket `faucet-claim` unter GitHub → Packages auf
-**Public** stellen, sonst kann Umbrel das Image nicht laden.
