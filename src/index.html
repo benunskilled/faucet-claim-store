@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faucet Claim</title>
+<style>
+  :root { --bg:#0b0b0c; --panel:#151517; --line:#2a2a2e; --text:#f2f2f2; --muted:#9a9aa0; --orange:#f7931a; --green:#5fd37a; --red:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding:32px 16px; }
+  main { max-width:560px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  h1 span { color:var(--orange); }
+  .sub { color:var(--muted); margin:0 0 24px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:0 0 6px; }
+  input { width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:15px; margin-bottom:14px; }
+  input:focus { outline:none; border-color:var(--orange); }
+  button { background:var(--orange); color:#111; border:0; border-radius:10px; padding:12px 18px; font-weight:600; font-size:15px; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:default; }
+  #msg { margin-left:12px; font-size:14px; }
+  .facts { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:0; }
+  .facts dt { color:var(--muted); }
+  .facts dd { margin:0; }
+  ul { list-style:none; margin:0; padding:0; }
+  li { padding:8px 0; border-top:1px solid var(--line); font-size:14px; display:flex; gap:10px; }
+  li:first-child { border-top:0; }
+  .t { color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .ok { color:var(--green); } .err { color:var(--red); }
+  .empty { color:var(--muted); font-size:14px; }
+  .note { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1><span>⚡</span> Faucet Claim</h1>
+  <p class="sub">Holt jeden Tag automatisch die 21 Sats vom VIX Faucet auf deine Lightning-Adresse.</p>
+
+  <form class="card" id="form">
+    <label for="address">Deine Lightning-Adresse</label>
+    <input id="address" placeholder="name@walletofsatoshi.com" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+    <label for="name">Pseudo für die Rangliste (optional)</label>
+    <input id="name" maxlength="30" placeholder="leer lassen = anonym" autocomplete="off">
+    <button id="save">Speichern</button><span id="msg"></span>
+  </form>
+
+  <div class="card">
+    <dl class="facts">
+      <dt>Letzter Erfolg</dt><dd id="last">–</dd>
+      <dt>Nächster Versuch</dt><dd id="next">–</dd>
+    </dl>
+  </div>
+
+  <div class="card">
+    <ul id="log"></ul>
+  </div>
+
+  <p class="note">Nach jedem erfolgreichen Claim kommt der nächste 24 h 5 min später. Meldet der Faucet eine Sperre, wird es nach 20 min nochmal versucht.</p>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  const fmt = ms => ms ? new Date(ms).toLocaleString("de-DE", { weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "–";
+  let loaded = false;
+
+  function render(s) {
+    if (!loaded) { $("address").value = s.address; $("name").value = s.name; loaded = true; }
+    $("last").textContent = fmt(s.lastSuccess);
+    $("next").textContent = !s.address ? "Erst Adresse eintragen"
+      : s.running ? "läuft gerade …"
+      : s.next <= Date.now() + 60000 ? "in den nächsten Minuten" : fmt(s.next);
+    const log = $("log");
+    log.replaceChildren();
+    if (!s.log.length) {
+      const li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "Noch keine Versuche.";
+      log.append(li);
+    }
+    for (const e of s.log.slice(0, 15)) {
+      const li = document.createElement("li");
+      const t = document.createElement("span"); t.className = "t"; t.textContent = fmt(e.at);
+      const x = document.createElement("span"); x.className = e.ok ? "ok" : "err"; x.textContent = (e.ok ? "✓ " : "✗ ") + e.text;
+      li.append(t, x);
+      log.append(li);
+    }
+  }
+
+  async function refresh() {
+    try { render(await (await fetch("api/status")).json()); } catch {}
+  }
+
+  $("form").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    $("save").disabled = true;
+    $("msg").textContent = "";
+    try {
+      const res = await fetch("api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: $("address").value, name: $("name").value }),
+      });
+      const data = await res.json();
+      if (res.ok) { $("msg").className = "ok"; $("msg").textContent = "Gespeichert ✓"; render(data); }
+      else { $("msg").className = "err"; $("msg").textContent = data.error; }
+    } catch {
+      $("msg").className = "err"; $("msg").textContent = "Speichern fehlgeschlagen";
+    }
+    $("save").disabled = false;
+  });
+
+  refresh();
+  setInterval(refresh, 15000);
+</script>
+</body>
+</html>
