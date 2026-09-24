@@ -1,0 +1,23 @@
+# One service: a small web page to enter the Lightning address, plus the daily
+# claim loop, which drives a headless Chromium (ghcr.io/benunskilled/faucet-claim,
+# built from src/ in this repository).
+#
+# The image reference is pinned by tag AND digest of the multi-arch index.
+# Until the first release it holds a placeholder - see README.md.
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: vixfaucet-claim_web_1
+      APP_PORT: 3000
+
+  web:
+    image: ghcr.io/benunskilled/faucet-claim:IMAGE_PLACEHOLDER
+    user: "1000:1000"
+    restart: unless-stopped
+    init: true
+    shm_size: "256m"
+    environment:
+      TZ: Europe/Berlin
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
