@@ -12,7 +12,7 @@ services:
       APP_PORT: 3000
 
   web:
-    image: ghcr.io/benunskilled/faucet-claim:1.0.2@sha256:3518025e3e866b24f7cfceb6b53d400262afbf3f3510ceb88d9cb11874a45e7b
+    image: ghcr.io/benunskilled/faucet-claim:1.0.3@sha256:15ef853ff715f3e4ad6137971d6b504d1ff5d589348bec2beb66a89f0348d2eb
     user: "1000:1000"
     restart: unless-stopped
     init: true

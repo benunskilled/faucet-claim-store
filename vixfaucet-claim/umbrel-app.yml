@@ -2,7 +2,7 @@ manifestVersion: 1
 id: vixfaucet-claim
 category: bitcoin
 name: Faucet Claim
-version: "1.0.2"
+version: "1.0.3"
 tagline: Your daily 21 sats from the VIX Faucet, claimed for you
 description: >-
   The VIX Faucet (faucet.vixlnbits.fr) sends 21 sats a day to anyone who enters a Lightning address. Faucet Claim does that for you, so you never forget a day.
@@ -13,7 +13,7 @@ description: >-
 
   Nothing but your Lightning address leaves your node, and only to the faucet. A Lightning address can only receive, so nothing can ever be taken from your wallet. This is an unofficial helper and not affiliated with the VIX Faucet.
 releaseNotes: >-
-  Much lighter: while it waits for the next claim, the app now uses a few dozen MB of memory instead of well over a hundred, because the browser only runs for the few seconds of the claim, in its own process that exits afterwards. It also skips images and fonts on the faucet page, and the download is less than half the size.
+  **Lighter in Umbrel's memory display.** After each claim the app now releases the browser files from the cache, so it shows about 17 MB between claims instead of about 180 MB.
 developer: Ben
 website: https://github.com/benunskilled/faucet-claim-store
 dependencies: []
