@@ -39,6 +39,7 @@ async function claimIfDue() {
   if (now < (state.lastAttempt || 0) + RETRY_MS) return; // Fehler-Pause
   running = true;
   const { ok, text } = await runClaim(address, name);
+  dropBrowserCache();
   addLog(state, ok, text);
   if (ok) state.lastSuccess = now;
   state.lastAttempt = now;
@@ -63,6 +64,18 @@ function runClaim(address, name) {
       }
     );
   });
+}
+
+// Nach dem Claim bleiben die gelesenen Browser-Dateien (~270 MB) im Datei-Cache
+// und werden dem Container angerechnet – Umbrel zeigt die App dann tagelang
+// mit ~180 MB statt ~17 MB. dd mit iflag=nocache wirft den Cache jeder Datei weg
+// (dauert ~2 s, einmal am Tag). Nur im Image, wo PLAYWRIGHT_BROWSERS_PATH gesetzt ist.
+function dropBrowserCache() {
+  const browsers = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  if (!browsers) return;
+  const dirs = [browsers, path.join(__dirname, "node_modules"), "/usr/lib", "/usr/share/fonts"].filter(d => fs.existsSync(d));
+  execFile("find", [...dirs, "-type", "f", "-exec", "dd", "if={}", "iflag=nocache", "count=0", "status=none", ";"],
+    { timeout: 60 * 1000 }, () => {});
 }
 
 function status() {
