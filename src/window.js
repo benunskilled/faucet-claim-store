@@ -28,14 +28,15 @@ function nextAllowed(ms, win) {
   return ms; // kann bei einem gültigen Fenster nicht passieren
 }
 
-// Prüft, was die Seite schickt. Gibt { window } oder { error } zurück; null/leer = kein Fenster.
+// Prüft, was die Seite schickt. Gibt { window } oder { error, code } zurück; null/leer = kein Fenster. Die Seite
+// übersetzt anhand von code, error ist der deutsche Text (für Aufrufer ohne Übersetzung).
 function parseWindow(input) {
   if (input == null || input === false) return { window: null };
   const from = String(input.from || ""), to = String(input.to || ""), tz = String(input.tz || "");
-  if (!HHMM.test(from) || !HHMM.test(to)) return { error: "Bitte die Uhrzeiten als HH:MM angeben." };
-  if (from === to) return { error: "Beginn und Ende des Zeitfensters dürfen nicht gleich sein." };
-  try { new Intl.DateTimeFormat("en-GB", { timeZone: tz }); } catch { return { error: "Diese Zeitzone kenne ich nicht." }; }
-  if (!tz) return { error: "Bitte eine Zeitzone wählen." };
+  if (!HHMM.test(from) || !HHMM.test(to)) return { code: "bad_time", error: "Bitte die Uhrzeiten als HH:MM angeben." };
+  if (from === to) return { code: "same_time", error: "Beginn und Ende des Zeitfensters dürfen nicht gleich sein." };
+  if (!tz) return { code: "no_tz", error: "Bitte eine Zeitzone wählen." };
+  try { new Intl.DateTimeFormat("en-GB", { timeZone: tz }); } catch { return { code: "bad_tz", error: "Diese Zeitzone kenne ich nicht." }; }
   return { window: { from, to, tz } };
 }
 

@@ -33,34 +33,41 @@
   label.check input { width:auto; margin:0; accent-color:var(--orange); }
   .row { display:flex; gap:12px; } .row > div { flex:1; }
   select { width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:15px; margin-bottom:14px; }
+  header { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .lang { display:flex; gap:2px; font-size:13px; }
+  .lang button { background:none; color:var(--muted); padding:4px 8px; font-weight:600; font-size:13px; border-radius:8px; }
+  .lang button.on { color:var(--text); background:var(--panel); }
 </style>
 </head>
 <body>
 <main>
-  <h1><span>⚡</span> Faucet Claim</h1>
-  <p class="sub">Holt jeden Tag automatisch die 21 Sats vom VIX Faucet auf deine Lightning-Adresse.</p>
+  <header>
+    <h1><span>⚡</span> Faucet Claim</h1>
+    <div class="lang"><button type="button" data-lang="de">DE</button><button type="button" data-lang="en">EN</button></div>
+  </header>
+  <p class="sub" data-i18n="sub"></p>
 
   <form class="card" id="form">
-    <label for="address">Deine Lightning-Adresse</label>
+    <label for="address" data-i18n="address"></label>
     <input id="address" placeholder="name@walletofsatoshi.com" autocomplete="off" autocapitalize="off" spellcheck="false" required>
-    <label for="name">Pseudo für die Rangliste (optional)</label>
-    <input id="name" maxlength="30" placeholder="leer lassen = anonym" autocomplete="off">
-    <label class="check"><input type="checkbox" id="useWindow"> Nur zu bestimmten Zeiten empfangen</label>
+    <label for="name" data-i18n="pseudo"></label>
+    <input id="name" maxlength="30" data-i18n-ph="pseudoPh" autocomplete="off">
+    <label class="check"><input type="checkbox" id="useWindow"> <span data-i18n="useWindow"></span></label>
     <div id="windowBox" hidden>
       <div class="row">
-        <div><label for="from">von</label><input type="time" id="from" value="08:00"></div>
-        <div><label for="to">bis</label><input type="time" id="to" value="22:00"></div>
+        <div><label for="from" data-i18n="from"></label><input type="time" id="from" value="08:00"></div>
+        <div><label for="to" data-i18n="to"></label><input type="time" id="to" value="22:00"></div>
       </div>
-      <label for="tz">Zeitzone</label>
+      <label for="tz" data-i18n="tz"></label>
       <select id="tz"></select>
     </div>
-    <button id="save">Speichern</button><span id="msg"></span>
+    <button id="save" data-i18n="save"></button><span id="msg"></span>
   </form>
 
   <div class="card">
     <dl class="facts">
-      <dt>Letzter Erfolg</dt><dd id="last">–</dd>
-      <dt>Nächster Versuch</dt><dd id="next">–</dd>
+      <dt data-i18n="last"></dt><dd id="last">–</dd>
+      <dt data-i18n="next"></dt><dd id="next">–</dd>
     </dl>
   </div>
 
@@ -68,12 +75,61 @@
     <ul id="log"></ul>
   </div>
 
-  <p class="note">Nach jedem erfolgreichen Claim kommt der nächste 24 h 5 min später. Meldet der Faucet eine Sperre, wird es nach 20 min nochmal versucht. Mit Zeitfenster wartet ein fälliger Claim bis zum nächsten Fensterbeginn.</p>
+  <p class="note" data-i18n="note"></p>
 </main>
 <script>
   const $ = id => document.getElementById(id);
-  const fmt = ms => ms ? new Date(ms).toLocaleString("de-DE", { weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "–";
-  let loaded = false;
+  // Alles, was die App selbst schreibt, auf Deutsch und Englisch. Die Antwort des Faucets im Log bleibt, wie er sie schreibt.
+  const T = {
+    de: {
+      locale: "de-DE",
+      sub: "Holt jeden Tag automatisch die 21 Sats vom VIX Faucet auf deine Lightning-Adresse.",
+      address: "Deine Lightning-Adresse", pseudo: "Pseudo für die Rangliste (optional)", pseudoPh: "leer lassen = anonym",
+      useWindow: "Nur zu bestimmten Zeiten empfangen", from: "von", to: "bis", tz: "Zeitzone", save: "Speichern",
+      last: "Letzter Erfolg", next: "Nächster Versuch",
+      note: "Nach jedem erfolgreichen Claim kommt der nächste 24 h 5 min später. Meldet der Faucet eine Sperre, wird es nach 20 min nochmal versucht. Mit Zeitfenster wartet ein fälliger Claim bis zum nächsten Fensterbeginn.",
+      noAddress: "Erst Adresse eintragen", running: "läuft gerade …", soon: "in den nächsten Minuten",
+      waiting: " (wartet auf das Zeitfenster)", empty: "Noch keine Versuche.", saved: "Gespeichert ✓", saveFailed: "Speichern fehlgeschlagen",
+      err_bad_address: "Das sieht nicht wie eine Lightning-Adresse aus (name@wallet.com).",
+      err_bad_time: "Bitte die Uhrzeiten als HH:MM angeben.", err_same_time: "Beginn und Ende des Zeitfensters dürfen nicht gleich sein.",
+      err_bad_tz: "Diese Zeitzone kenne ich nicht.", err_no_tz: "Bitte eine Zeitzone wählen.",
+      err_not_writable: d => `Kann nicht speichern: Der Datenordner ist nicht beschreibbar (${d}).`,
+      log_no_answer: "Keine Antwort vom Claim-Prozess",
+      log_process_failed: d => `Claim-Prozess fehlgeschlagen: ${d === "timeout" ? "Zeitüberschreitung" : d}`,
+    },
+    en: {
+      locale: "en-GB",
+      sub: "Claims the daily 21 sats from the VIX Faucet to your Lightning address, automatically.",
+      address: "Your Lightning address", pseudo: "Name for the leaderboard (optional)", pseudoPh: "leave empty = anonymous",
+      useWindow: "Only receive at certain times", from: "from", to: "to", tz: "Time zone", save: "Save",
+      last: "Last success", next: "Next attempt",
+      note: "After each successful claim the next one comes 24 h 5 min later. If the faucet asks you to wait, it tries again after 20 min. With a time window, a claim that falls due waits for the window to open.",
+      noAddress: "Enter an address first", running: "running …", soon: "in the next few minutes",
+      waiting: " (waiting for the time window)", empty: "No attempts yet.", saved: "Saved ✓", saveFailed: "Saving failed",
+      err_bad_address: "That doesn't look like a Lightning address (name@wallet.com).",
+      err_bad_time: "Please give the times as HH:MM.", err_same_time: "The time window can't start and end at the same time.",
+      err_bad_tz: "I don't know this time zone.", err_no_tz: "Please choose a time zone.",
+      err_not_writable: d => `Can't save: the data folder is not writable (${d}).`,
+      log_no_answer: "No answer from the claim process",
+      log_process_failed: d => `Claim process failed: ${d === "timeout" ? "timed out" : d}`,
+    },
+  };
+  const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+                  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+  let lang = store.get("lang") || (/^de\b/i.test(navigator.language || "") ? "de" : "en");
+  const t = (key, detail) => { const v = T[lang][key]; return typeof v === "function" ? v(detail) : v; };
+  const fmt = ms => ms ? new Date(ms).toLocaleString(t("locale"), { weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "–";
+  let loaded = false, lastStatus = null, lastMsg = null;
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+    for (const el of document.querySelectorAll("[data-i18n-ph]")) el.placeholder = t(el.dataset.i18nPh);
+    for (const b of document.querySelectorAll(".lang button")) b.className = b.dataset.lang === lang ? "on" : "";
+    if (lastMsg) showMsg(...lastMsg);
+    if (lastStatus) render(lastStatus);
+  }
+  for (const b of document.querySelectorAll(".lang button")) b.addEventListener("click", () => { lang = b.dataset.lang; store.set("lang", lang); applyLang(); });
 
   // Zeitzonen-Liste des Browsers, vorbelegt mit der eigenen
   const ownTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -83,7 +139,15 @@
   $("tz").value = ownTz;
   $("useWindow").addEventListener("change", () => { $("windowBox").hidden = !$("useWindow").checked; });
 
+  // Meldung neben "Speichern": als Schlüssel gemerkt, damit sie beim Sprachwechsel mitwechselt.
+  function showMsg(ok, key, detail, fallback) {
+    lastMsg = [ok, key, detail, fallback];
+    $("msg").className = ok ? "ok" : "err";
+    $("msg").textContent = (key && T[lang][key]) ? t(key, detail) : (fallback || "");
+  }
+
   function render(s) {
+    lastStatus = s;
     if (!loaded) {
       $("address").value = s.address; $("name").value = s.name;
       if (s.window) {
@@ -95,23 +159,24 @@
       loaded = true;
     }
     $("last").textContent = fmt(s.lastSuccess);
-    $("next").textContent = !s.address ? "Erst Adresse eintragen"
-      : s.running ? "läuft gerade …"
-      : s.next <= Date.now() + 60000 ? "in den nächsten Minuten"
-      : fmt(s.next) + (s.waiting ? " (wartet auf das Zeitfenster)" : "");
+    $("next").textContent = !s.address ? t("noAddress")
+      : s.running ? t("running")
+      : s.next <= Date.now() + 60000 ? t("soon")
+      : fmt(s.next) + (s.waiting ? t("waiting") : "");
     const log = $("log");
     log.replaceChildren();
     if (!s.log.length) {
       const li = document.createElement("li");
       li.className = "empty";
-      li.textContent = "Noch keine Versuche.";
+      li.textContent = t("empty");
       log.append(li);
     }
     for (const e of s.log.slice(0, 15)) {
       const li = document.createElement("li");
-      const t = document.createElement("span"); t.className = "t"; t.textContent = fmt(e.at);
-      const x = document.createElement("span"); x.className = e.ok ? "ok" : "err"; x.textContent = (e.ok ? "✓ " : "✗ ") + e.text;
-      li.append(t, x);
+      const tm = document.createElement("span"); tm.className = "t"; tm.textContent = fmt(e.at);
+      const text = e.code && T[lang]["log_" + e.code] ? t("log_" + e.code, e.detail) : e.text;
+      const x = document.createElement("span"); x.className = e.ok ? "ok" : "err"; x.textContent = (e.ok ? "✓ " : "✗ ") + text;
+      li.append(tm, x);
       log.append(li);
     }
   }
@@ -123,7 +188,7 @@
   $("form").addEventListener("submit", async ev => {
     ev.preventDefault();
     $("save").disabled = true;
-    $("msg").textContent = "";
+    $("msg").textContent = ""; lastMsg = null;
     try {
       const res = await fetch("api/config", {
         method: "POST",
@@ -132,14 +197,15 @@
           window: $("useWindow").checked ? { from: $("from").value, to: $("to").value, tz: $("tz").value } : null }),
       });
       const data = await res.json();
-      if (res.ok) { $("msg").className = "ok"; $("msg").textContent = "Gespeichert ✓"; render(data); }
-      else { $("msg").className = "err"; $("msg").textContent = data.error; }
+      if (res.ok) { showMsg(true, "saved"); render(data); }
+      else showMsg(false, data.code && "err_" + data.code, data.detail, data.error);
     } catch {
-      $("msg").className = "err"; $("msg").textContent = "Speichern fehlgeschlagen";
+      showMsg(false, "saveFailed");
     }
     $("save").disabled = false;
   });
 
+  applyLang();
   refresh();
   setInterval(refresh, 15000);
 </script>
