@@ -29,6 +29,10 @@
   .ok { color:var(--green); } .err { color:var(--red); }
   .empty { color:var(--muted); font-size:14px; }
   .note { color:var(--muted); font-size:13px; }
+  label.check { display:flex; align-items:center; gap:8px; color:var(--text); font-size:15px; margin:0 0 14px; cursor:pointer; }
+  label.check input { width:auto; margin:0; accent-color:var(--orange); }
+  .row { display:flex; gap:12px; } .row > div { flex:1; }
+  select { width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:15px; margin-bottom:14px; }
 </style>
 </head>
 <body>
@@ -41,6 +45,15 @@
     <input id="address" placeholder="name@walletofsatoshi.com" autocomplete="off" autocapitalize="off" spellcheck="false" required>
     <label for="name">Pseudo für die Rangliste (optional)</label>
     <input id="name" maxlength="30" placeholder="leer lassen = anonym" autocomplete="off">
+    <label class="check"><input type="checkbox" id="useWindow"> Nur zu bestimmten Zeiten empfangen</label>
+    <div id="windowBox" hidden>
+      <div class="row">
+        <div><label for="from">von</label><input type="time" id="from" value="08:00"></div>
+        <div><label for="to">bis</label><input type="time" id="to" value="22:00"></div>
+      </div>
+      <label for="tz">Zeitzone</label>
+      <select id="tz"></select>
+    </div>
     <button id="save">Speichern</button><span id="msg"></span>
   </form>
 
@@ -55,19 +68,37 @@
     <ul id="log"></ul>
   </div>
 
-  <p class="note">Nach jedem erfolgreichen Claim kommt der nächste 24 h 5 min später. Meldet der Faucet eine Sperre, wird es nach 20 min nochmal versucht.</p>
+  <p class="note">Nach jedem erfolgreichen Claim kommt der nächste 24 h 5 min später. Meldet der Faucet eine Sperre, wird es nach 20 min nochmal versucht. Mit Zeitfenster wartet ein fälliger Claim bis zum nächsten Fensterbeginn.</p>
 </main>
 <script>
   const $ = id => document.getElementById(id);
   const fmt = ms => ms ? new Date(ms).toLocaleString("de-DE", { weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" }) : "–";
   let loaded = false;
 
+  // Zeitzonen-Liste des Browsers, vorbelegt mit der eigenen
+  const ownTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  for (const z of (Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : [ownTz])) {
+    const o = document.createElement("option"); o.value = o.textContent = z; $("tz").append(o);
+  }
+  $("tz").value = ownTz;
+  $("useWindow").addEventListener("change", () => { $("windowBox").hidden = !$("useWindow").checked; });
+
   function render(s) {
-    if (!loaded) { $("address").value = s.address; $("name").value = s.name; loaded = true; }
+    if (!loaded) {
+      $("address").value = s.address; $("name").value = s.name;
+      if (s.window) {
+        $("useWindow").checked = true; $("windowBox").hidden = false;
+        $("from").value = s.window.from; $("to").value = s.window.to;
+        if (![...$("tz").options].some(o => o.value === s.window.tz)) { const o = document.createElement("option"); o.value = o.textContent = s.window.tz; $("tz").append(o); }
+        $("tz").value = s.window.tz;
+      }
+      loaded = true;
+    }
     $("last").textContent = fmt(s.lastSuccess);
     $("next").textContent = !s.address ? "Erst Adresse eintragen"
       : s.running ? "läuft gerade …"
-      : s.next <= Date.now() + 60000 ? "in den nächsten Minuten" : fmt(s.next);
+      : s.next <= Date.now() + 60000 ? "in den nächsten Minuten"
+      : fmt(s.next) + (s.waiting ? " (wartet auf das Zeitfenster)" : "");
     const log = $("log");
     log.replaceChildren();
     if (!s.log.length) {
@@ -97,7 +128,8 @@
       const res = await fetch("api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: $("address").value, name: $("name").value }),
+        body: JSON.stringify({ address: $("address").value, name: $("name").value,
+          window: $("useWindow").checked ? { from: $("from").value, to: $("to").value, tz: $("tz").value } : null }),
       });
       const data = await res.json();
       if (res.ok) { $("msg").className = "ok"; $("msg").textContent = "Gespeichert ✓"; render(data); }
