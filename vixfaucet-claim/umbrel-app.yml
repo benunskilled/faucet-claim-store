@@ -8,7 +8,7 @@ description: >-
   The VIX Faucet (faucet.vixlnbits.fr) sends 21 sats a day to anyone who enters a Lightning address. Faucet Claim does that for you, so you never forget a day.
 
 
-  Open the app, type in your Lightning address, save. From then on your node visits the faucet page once a day in a small built-in browser, fills in your address and presses the button, just as you would by hand. Each claim comes 24 hours and 5 minutes after the last successful one. If the faucet asks you to wait, it tries again twenty minutes later. The page shows your last success, the next attempt and a short log.
+  Open the app, type in your Lightning address, save. From then on your node visits the faucet page once a day in a small built-in browser, fills in your address and presses the button, just as you would by hand. Each claim comes 24 hours and 5 minutes after the last successful one. If the faucet asks you to wait, it tries again twenty minutes later. Optionally only within a time window, such as 08:00 to 22:00. The page shows your last success, the next attempt and a short log.
 
 
   Nothing but your Lightning address leaves your node, and only to the faucet. A Lightning address can only receive, so nothing can ever be taken from your wallet. This is an unofficial helper and not affiliated with the VIX Faucet.
