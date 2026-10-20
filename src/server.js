@@ -24,8 +24,12 @@ function writeJson(file, value) {
   fs.writeFileSync(file, JSON.stringify(value, null, 2));
 }
 
-function addLog(state, ok, text) {
-  state.log = [{ at: Date.now(), ok, text }, ...(state.log || [])].slice(0, MAX_LOG);
+// code/detail nur bei eigenen Meldungen der App, damit die Seite sie übersetzen kann; die Antwort des Faucets
+// steht so im Log, wie er sie schreibt.
+function addLog(state, ok, text, code, detail) {
+  const entry = { at: Date.now(), ok, text };
+  if (code) Object.assign(entry, { code, detail });
+  state.log = [entry, ...(state.log || [])].slice(0, MAX_LOG);
   console.log(`${new Date().toISOString()}  ${ok ? "OK" : "FEHLER"}  ${text}`);
 }
 
@@ -40,9 +44,9 @@ async function claimIfDue() {
   if (now < (state.lastAttempt || 0) + RETRY_MS) return; // Fehler-Pause
   if (!inWindow(now, window)) return; // außerhalb des Zeitfensters
   running = true;
-  const { ok, text } = await runClaim(address, name);
+  const { ok, text, code, detail } = await runClaim(address, name);
   dropBrowserCache();
-  addLog(state, ok, text);
+  addLog(state, ok, text, code, detail);
   if (ok) state.lastSuccess = now;
   state.lastAttempt = now;
   try { writeJson(STATE, state); } catch (e) { console.log(`Status nicht gespeichert: ${e.message}`); }
@@ -61,7 +65,9 @@ function runClaim(address, name) {
         try {
           resolve(JSON.parse(stdout.trim().split("\n").pop()));
         } catch {
-          resolve({ ok: false, text: err ? `Claim-Prozess fehlgeschlagen: ${err.killed ? "Zeitüberschreitung" : err.message.split("\n")[0]}` : "Keine Antwort vom Claim-Prozess" });
+          if (!err) return resolve({ ok: false, text: "Keine Antwort vom Claim-Prozess", code: "no_answer" });
+          const detail = err.killed ? "timeout" : err.message.split("\n")[0];
+          resolve({ ok: false, text: `Claim-Prozess fehlgeschlagen: ${err.killed ? "Zeitüberschreitung" : detail}`, code: "process_failed", detail });
         }
       }
     );
@@ -127,15 +133,15 @@ const server = http.createServer((req, res) => {
       const address = String(input.address || "").trim();
       const name = String(input.name || "").trim().slice(0, 30);
       if (!LIGHTNING_ADDRESS.test(address)) {
-        return send(400, "application/json", JSON.stringify({ error: "Das sieht nicht wie eine Lightning-Adresse aus (name@wallet.com)." }));
+        return send(400, "application/json", JSON.stringify({ code: "bad_address", error: "Das sieht nicht wie eine Lightning-Adresse aus (name@wallet.com)." }));
       }
-      const { window, error } = parseWindow(input.window);
-      if (error) return send(400, "application/json", JSON.stringify({ error }));
+      const { window, error, code } = parseWindow(input.window);
+      if (error) return send(400, "application/json", JSON.stringify({ code, error }));
       try {
         writeJson(CONFIG, window ? { address, name, window } : { address, name });
       } catch (e) {
         console.log(`Speichern fehlgeschlagen: ${e.message}`);
-        return send(500, "application/json", JSON.stringify({ error: `Kann nicht speichern: Der Datenordner ist nicht beschreibbar (${e.code || e.message}).` }));
+        return send(500, "application/json", JSON.stringify({ code: "not_writable", detail: e.code || e.message, error: `Kann nicht speichern: Der Datenordner ist nicht beschreibbar (${e.code || e.message}).` }));
       }
       send(200, "application/json", JSON.stringify(status()));
       claimIfDue(); // neue Adresse: gleich prüfen, ob ein Claim fällig ist
