@@ -22,7 +22,7 @@ jederzeit ändern.
 Ein kleiner eingebauter Browser öffnet die Faucet-Seite, trägt deine Adresse ein
 und drückt den Knopf, genau wie von Hand. Nach einem Erfolg kommt der nächste
 Claim 24 h 5 min später. Meldet der Faucet eine Sperre, versucht es die App nach
-20 min erneut. Außer deiner Lightning-Adresse (an den Faucet) verlässt nichts
+20 min erneut. Auf Wunsch nur in einem Zeitfenster, etwa von 08:00 bis 22:00. Außer deiner Lightning-Adresse (an den Faucet) verlässt nichts
 deinen Node.
 
 ## Neue Version veröffentlichen
