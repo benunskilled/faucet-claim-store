@@ -4,6 +4,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
+const { inWindow, nextAllowed, parseWindow } = require("./window");
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || path.join(__dirname, "data");
@@ -31,12 +32,13 @@ function addLog(state, ok, text) {
 let running = false;
 
 async function claimIfDue() {
-  const { address, name } = readJson(CONFIG);
+  const { address, name, window } = readJson(CONFIG);
   const state = readJson(STATE);
   const now = Date.now();
   if (running || !address) return;
   if (now < (state.lastSuccess || 0) + INTERVAL_MS) return; // noch nicht fällig
   if (now < (state.lastAttempt || 0) + RETRY_MS) return; // Fehler-Pause
+  if (!inWindow(now, window)) return; // außerhalb des Zeitfensters
   running = true;
   const { ok, text } = await runClaim(address, name);
   dropBrowserCache();
@@ -81,17 +83,21 @@ function dropBrowserCache() {
 function status() {
   const config = readJson(CONFIG);
   const state = readJson(STATE);
-  let next = null;
+  let next = null, waiting = false;
   if (config.address) {
-    next = Math.max(
+    const due = Math.max(
       (state.lastSuccess || 0) + INTERVAL_MS,
       (state.lastAttempt || 0) + RETRY_MS,
       Date.now()
     );
+    next = nextAllowed(due, config.window);
+    waiting = next > due;
   }
   return {
     address: config.address || "",
     name: config.name || "",
+    window: config.window || null,
+    waiting,
     running,
     lastSuccess: state.lastSuccess || null,
     next,
@@ -123,8 +129,10 @@ const server = http.createServer((req, res) => {
       if (!LIGHTNING_ADDRESS.test(address)) {
         return send(400, "application/json", JSON.stringify({ error: "Das sieht nicht wie eine Lightning-Adresse aus (name@wallet.com)." }));
       }
+      const { window, error } = parseWindow(input.window);
+      if (error) return send(400, "application/json", JSON.stringify({ error }));
       try {
-        writeJson(CONFIG, { address, name });
+        writeJson(CONFIG, window ? { address, name, window } : { address, name });
       } catch (e) {
         console.log(`Speichern fehlgeschlagen: ${e.message}`);
         return send(500, "application/json", JSON.stringify({ error: `Kann nicht speichern: Der Datenordner ist nicht beschreibbar (${e.code || e.message}).` }));

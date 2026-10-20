@@ -7,7 +7,7 @@ COPY package.json ./
 RUN npm install --omit=dev \
  && npx playwright install --with-deps --only-shell chromium \
  && rm -rf /var/lib/apt/lists/* /root/.npm /tmp/*
-COPY server.js claim.js index.html ./
+COPY server.js claim.js window.js index.html ./
 ENV DATA_DIR=/data HOME=/data PORT=3000
 EXPOSE 3000
 CMD ["node", "server.js"]
