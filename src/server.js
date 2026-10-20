@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
 const { inWindow, nextAllowed, parseWindow, storedWindow } = require("./window");
+const { satsOf, totals } = require("./totals");
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || path.join(__dirname, "data");
@@ -20,8 +21,11 @@ fs.mkdirSync(DATA, { recursive: true });
 function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return {}; }
 }
+// Erst in eine Nebendatei, dann umbenennen: ein Absturz mitten im Schreiben hinterlässt nie ein halbes state.json –
+// der Sat-Zähler ließe sich daraus nicht wiederherstellen.
 function writeJson(file, value) {
-  fs.writeFileSync(file, JSON.stringify(value, null, 2));
+  fs.writeFileSync(file + ".tmp", JSON.stringify(value, null, 2));
+  fs.renameSync(file + ".tmp", file);
 }
 
 // code/detail nur bei eigenen Meldungen der App, damit die Seite sie übersetzen kann; die Antwort des Faucets
@@ -47,8 +51,13 @@ async function claimIfDue() {
   running = true;
   const { ok, text, code, detail } = await runClaim(address, name);
   dropBrowserCache();
+  const total = totals(state); // vor addLog: der neue Eintrag zählt unten selbst
   addLog(state, ok, text, code, detail);
-  if (ok) state.lastSuccess = now;
+  if (ok) {
+    state.lastSuccess = now;
+    total.sats += satsOf(text); total.claims += 1;
+    if (!total.since) total.since = now;
+  }
   state.lastAttempt = now;
   try { writeJson(STATE, state); } catch (e) { console.log(`Status nicht gespeichert: ${e.message}`); }
   running = false;
@@ -105,6 +114,7 @@ function status() {
     name: config.name || "",
     window: storedWindow(config.window),
     waiting,
+    total: totals(state),
     running,
     lastSuccess: state.lastSuccess || null,
     next,

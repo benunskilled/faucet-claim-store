@@ -33,10 +33,10 @@ jobs:
           docker run --rm --user 1000:1000 --init --shm-size 256m \
             -v "$PWD:/repo:ro" -e HOME=/tmp -e APP=/app \
             faucet-claim:test sh /repo/test/smoke.sh
-      - name: Time window - unit tests with the image's own Node (time zones need its ICU)
+      - name: Unit tests with the image's own Node (time zones need its ICU)
         run: |
           docker run --rm --user 1000:1000 -v "$PWD:/repo:ro" -e HOME=/tmp \
-            faucet-claim:test node --test /repo/test/window.test.js
+            faucet-claim:test node --test /repo/test/window.test.js /repo/test/totals.test.js
       - name: Image size
         run: docker image ls faucet-claim:test
       - id: build

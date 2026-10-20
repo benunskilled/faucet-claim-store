@@ -66,6 +66,7 @@
 
   <div class="card">
     <dl class="facts">
+      <dt data-i18n="total"></dt><dd id="total">–</dd>
       <dt data-i18n="last"></dt><dd id="last">–</dd>
       <dt data-i18n="next"></dt><dd id="next">–</dd>
     </dl>
@@ -86,6 +87,7 @@
       sub: "Holt jeden Tag automatisch die 21 Sats vom VIX Faucet auf deine Lightning-Adresse.",
       address: "Deine Lightning-Adresse", pseudo: "Pseudo für die Rangliste (optional)", pseudoPh: "leer lassen = anonym",
       useWindow: "Nur zu bestimmten Zeiten empfangen", from: "Von", to: "Bis", tz: "Zeitzone", save: "Speichern",
+      total: "Bisher erhalten", totalLine: (t) => `${t.sats.toLocaleString("de-DE")} Sats · ${t.claims.toLocaleString("de-DE")} ${t.claims === 1 ? "Claim" : "Claims"}${t.since ? " seit " + new Date(t.since).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : ""}`,
       last: "Letzter Erfolg", next: "Nächster Versuch",
       note: "Der nächste Claim kommt nach 24 h 5 min.",
       noAddress: "Erst Adresse eintragen", running: "läuft gerade …", soon: "in den nächsten Minuten",
@@ -103,6 +105,7 @@
       sub: "Claims the daily 21 sats from the VIX Faucet to your Lightning address, automatically.",
       address: "Your Lightning address", pseudo: "Name for the leaderboard (optional)", pseudoPh: "leave empty = anonymous",
       useWindow: "Only receive at certain times", from: "From", to: "To", tz: "Time zone", save: "Save",
+      total: "Received so far", totalLine: (t) => `${t.sats.toLocaleString("en-GB")} sats · ${t.claims.toLocaleString("en-GB")} ${t.claims === 1 ? "claim" : "claims"}${t.since ? " since " + new Date(t.since).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : ""}`,
       last: "Last success", next: "Next attempt",
       note: "The next claim comes after 24 h 5 min.",
       noAddress: "Enter an address first", running: "running …", soon: "in the next few minutes",
@@ -161,6 +164,7 @@
       }
       loaded = true;
     }
+    $("total").textContent = s.total && s.total.claims ? t("totalLine", s.total) : "–";
     $("last").textContent = fmt(s.lastSuccess);
     $("next").textContent = !s.address ? t("noAddress")
       : s.running ? t("running")
