@@ -13,6 +13,7 @@ sleep 1
 node -e 'fetch(`http://localhost:${process.env.PORT}/api/config`, { method: "POST", body: JSON.stringify({ address: "test@example.com" }) }).then(r => process.exit(r.ok ? 0 : 1))'
 for i in $(seq 1 60); do
   if grep -q '"lastSuccess"' "$DATA/state.json" 2>/dev/null; then
+    grep -q '"claims": 1' "$DATA/state.json" || { echo "FEHLER: Sat-Zähler nicht hochgezählt"; cat "$DATA/state.json"; exit 1; }
     echo "OK: $(cat "$DATA/state.json")"
     exit 0
   fi
