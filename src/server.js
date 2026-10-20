@@ -4,7 +4,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
-const { inWindow, nextAllowed, parseWindow } = require("./window");
+const { inWindow, nextAllowed, parseWindow, storedWindow } = require("./window");
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || path.join(__dirname, "data");
@@ -36,7 +36,8 @@ function addLog(state, ok, text, code, detail) {
 let running = false;
 
 async function claimIfDue() {
-  const { address, name, window } = readJson(CONFIG);
+  const { address, name } = readJson(CONFIG);
+  const window = storedWindow(readJson(CONFIG).window);
   const state = readJson(STATE);
   const now = Date.now();
   if (running || !address) return;
@@ -96,13 +97,13 @@ function status() {
       (state.lastAttempt || 0) + RETRY_MS,
       Date.now()
     );
-    next = nextAllowed(due, config.window);
+    next = nextAllowed(due, storedWindow(config.window));
     waiting = next > due;
   }
   return {
     address: config.address || "",
     name: config.name || "",
-    window: config.window || null,
+    window: storedWindow(config.window),
     waiting,
     running,
     lastSuccess: state.lastSuccess || null,
@@ -129,7 +130,8 @@ const server = http.createServer((req, res) => {
     req.on("data", chunk => { body += chunk; if (body.length > 10000) req.destroy(); });
     req.on("end", () => {
       let input;
-      try { input = JSON.parse(body); } catch { return send(400, "application/json", '{"error":"Ungültige Anfrage"}'); }
+      try { input = JSON.parse(body); } catch { input = null; }
+      if (!input || typeof input !== "object") return send(400, "application/json", '{"code":"bad_request","error":"Ungültige Anfrage"}');
       const address = String(input.address || "").trim();
       const name = String(input.name || "").trim().slice(0, 30);
       if (!LIGHTNING_ADDRESS.test(address)) {

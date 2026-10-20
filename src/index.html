@@ -85,7 +85,7 @@
       locale: "de-DE",
       sub: "Holt jeden Tag automatisch die 21 Sats vom VIX Faucet auf deine Lightning-Adresse.",
       address: "Deine Lightning-Adresse", pseudo: "Pseudo für die Rangliste (optional)", pseudoPh: "leer lassen = anonym",
-      useWindow: "Nur zu bestimmten Zeiten empfangen", from: "von", to: "bis", tz: "Zeitzone", save: "Speichern",
+      useWindow: "Nur zu bestimmten Zeiten empfangen", from: "Von", to: "Bis", tz: "Zeitzone", save: "Speichern",
       last: "Letzter Erfolg", next: "Nächster Versuch",
       note: "Der nächste Claim kommt nach 24 h 5 min.",
       noAddress: "Erst Adresse eintragen", running: "läuft gerade …", soon: "in den nächsten Minuten",
@@ -93,6 +93,7 @@
       err_bad_address: "Das sieht nicht wie eine Lightning-Adresse aus (name@wallet.com).",
       err_bad_time: "Bitte die Uhrzeiten als HH:MM angeben.", err_same_time: "Beginn und Ende des Zeitfensters dürfen nicht gleich sein.",
       err_bad_tz: "Diese Zeitzone kenne ich nicht.", err_no_tz: "Bitte eine Zeitzone wählen.",
+      err_too_short: "Das Zeitfenster muss mindestens 30 Minuten lang sein.", err_bad_request: "Ungültige Anfrage",
       err_not_writable: d => `Kann nicht speichern: Der Datenordner ist nicht beschreibbar (${d}).`,
       log_no_answer: "Keine Antwort vom Claim-Prozess",
       log_process_failed: d => `Claim-Prozess fehlgeschlagen: ${d === "timeout" ? "Zeitüberschreitung" : d}`,
@@ -101,7 +102,7 @@
       locale: "en-GB",
       sub: "Claims the daily 21 sats from the VIX Faucet to your Lightning address, automatically.",
       address: "Your Lightning address", pseudo: "Name for the leaderboard (optional)", pseudoPh: "leave empty = anonymous",
-      useWindow: "Only receive at certain times", from: "from", to: "to", tz: "Time zone", save: "Save",
+      useWindow: "Only receive at certain times", from: "From", to: "To", tz: "Time zone", save: "Save",
       last: "Last success", next: "Next attempt",
       note: "The next claim comes after 24 h 5 min.",
       noAddress: "Enter an address first", running: "running …", soon: "in the next few minutes",
@@ -109,6 +110,7 @@
       err_bad_address: "That doesn't look like a Lightning address (name@wallet.com).",
       err_bad_time: "Please give the times as HH:MM.", err_same_time: "The time window can't start and end at the same time.",
       err_bad_tz: "I don't know this time zone.", err_no_tz: "Please choose a time zone.",
+      err_too_short: "The time window must be at least 30 minutes long.", err_bad_request: "Invalid request",
       err_not_writable: d => `Can't save: the data folder is not writable (${d}).`,
       log_no_answer: "No answer from the claim process",
       log_process_failed: d => `Claim process failed: ${d === "timeout" ? "timed out" : d}`,
@@ -136,6 +138,7 @@
   for (const z of (Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : [ownTz])) {
     const o = document.createElement("option"); o.value = o.textContent = z; $("tz").append(o);
   }
+  if (![...$("tz").options].some(o => o.value === ownTz)) { const o = document.createElement("option"); o.value = o.textContent = ownTz; $("tz").prepend(o); }
   $("tz").value = ownTz;
   $("useWindow").addEventListener("change", () => { $("windowBox").hidden = !$("useWindow").checked; });
 

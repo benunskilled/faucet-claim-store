@@ -1,7 +1,7 @@
 // Zeitfenster: node --test test/
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { inWindow, nextAllowed, parseWindow } = require("../src/window");
+const { inWindow, nextAllowed, parseWindow, storedWindow } = require("../src/window");
 
 const day = { from: "08:00", to: "22:00", tz: "Europe/Berlin" };
 const night = { from: "20:00", to: "02:00", tz: "Europe/Berlin" };
@@ -46,4 +46,17 @@ test("Eingaben werden geprüft", () => {
   assert.ok(parseWindow({ from: "08:00", to: "08:00", tz: "Europe/Berlin" }).error);
   assert.ok(parseWindow({ from: "08:00", to: "22:00", tz: "Mars/Olympus" }).error);
   assert.ok(parseWindow({ from: "08:00", to: "22:00", tz: "" }).error);
+});
+
+test("ein Fenster unter 30 min wird abgelehnt, auch über Mitternacht", () => {
+  assert.equal(parseWindow({ from: "08:00", to: "08:20", tz: "Europe/Berlin" }).code, "too_short");
+  assert.equal(parseWindow({ from: "23:50", to: "00:10", tz: "Europe/Berlin" }).code, "too_short");
+  assert.ok(parseWindow({ from: "23:45", to: "00:15", tz: "Europe/Berlin" }).window);
+});
+
+test("ein kaputtes gespeichertes Fenster gilt als kein Fenster statt abzustürzen", () => {
+  assert.equal(storedWindow({ from: "8:00", to: "22:00", tz: "Europe/Berlin" }), null);
+  assert.equal(storedWindow({ from: "08:00", to: "22:00", tz: "Mars/Olympus" }), null);
+  assert.equal(storedWindow(undefined), null);
+  assert.deepEqual(storedWindow(day), day);
 });
